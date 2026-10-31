@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src http://127.0.0.1:8876; script-src 'sha256-YOFi88lSNz9gA+D18AjCAdLs8iusGn2iV62UdJo6H+Q='; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+  <title>Volver a Mi Finanzas</title>
+  <style>body{font:16px system-ui,sans-serif;max-width:42rem;margin:12vh auto;padding:0 1.2rem;color:#17202a}button{font:inherit;padding:.7rem 1rem}code{overflow-wrap:anywhere}</style>
+</head>
+<body>
+  <h1>Autorización bancaria</h1>
+  <p id="message">Verificando el retorno de Enable Banking…</p>
+  <button id="continue" hidden>Entregar retorno a Mi Finanzas en este equipo</button>
+  <script>
+  (() => {
+    const params = new URLSearchParams(location.search);
+    const payload = {code:params.get('code'),state:params.get('state'),error:params.get('error'),error_description:params.get('error_description')};
+    history.replaceState(null,'',location.pathname);
+    const msg=document.getElementById('message'),button=document.getElementById('continue');
+    if(!payload.state||(!payload.code&&!payload.error)){
+      msg.textContent=location.protocol==='file:'
+        ?'Esta es una copia local. Sube callback.html a la raíz del repositorio mi-finanzas-legal y abre la dirección HTTPS de GitHub Pages. No conectes aún una cuenta bancaria.'
+        :'Faltan parámetros de retorno. Esta página solo recibe datos al volver aquí desde Enable Banking. No conectes aún una cuenta bancaria.';
+      return;
+    }
+    msg.textContent='Retorno recibido. Comprueba que Mi Finanzas está abierto y pulsa para entregarlo solo a este equipo.';
+    button.hidden=false;
+    button.addEventListener('click',async()=>{
+      button.disabled=true;
+      const encoded=JSON.stringify(payload);
+      try{
+        const response=await fetch('http://127.0.0.1:8876/enable-banking/callback',{method:'POST',headers:{'Content-Type':'application/json'},body:encoded,mode:'cors',credentials:'omit',cache:'no-store',redirect:'error'});
+        const result=await response.json();
+        msg.textContent=response.ok?(result.status==='callback_test_ok'?'Prueba correcta: el retorno llegó a Mi Finanzas y el state se validó. No se conectó ningún banco. Puedes cerrar esta página.':'Conexión recibida y guardada localmente. Ya puedes cerrar esta página.'):'Mi Finanzas rechazó el retorno ('+(result.error||'error de verificación')+'). Vuelve a la aplicación y revisa su mensaje.';
+      }catch(_){
+        msg.textContent='No se encontró Mi Finanzas v0.4 en el puerto 8876. Abre INICIAR_MI_FINANZAS_V04.bat y vuelve a iniciar la prueba.';
+        button.disabled=false;
+      }
+    },{once:true});
+  })();
+  </script>
+</body>
+</html>
